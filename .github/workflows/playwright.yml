@@ -58,9 +58,16 @@ jobs:
         if: always()
         uses: slackapi/slack-github-action@v1.26.0
         with:
+          # payload: |
+          #   {
+          #     "text": "${{ steps.test-runner.outcome == 'success' && '✅' || '❌' }} Playwright tests ${{ steps.test-runner.outcome }} for `${{ github.repository }}`\n\n📋 **Details:**\n• Branch: `${{ github.ref_name }}`\n• Commit: ${{ github.event.head_commit.message }}\n• Author: ${{ github.event.head_commit.author.name || github.actor }}\n\n🔗 <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Details>"
+          #   }
           payload: |
             {
-              "text": "${{ steps.test-runner.outcome == 'success' && '✅' || '❌' }} Playwright tests ${{ steps.test-runner.outcome }} for `${{ github.repository }}`\n\n📋 **Details:**\n• Branch: `${{ github.ref_name }}`\n• Commit: ${{ github.event.head_commit.message }}\n• Author: ${{ github.event.head_commit.author.name || github.actor }}\n\n🔗 <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Details>"
+              "type": "${{ 'Nightly' }}",
+              "commit": "${{ github.sha }}",
+              "run_id": "${{ github.run_id }}",
+              "status": "${{ needs.playwright-run.outputs.status }}"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
