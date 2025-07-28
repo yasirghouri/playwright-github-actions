@@ -63,6 +63,28 @@ jobs:
       contents: read
     needs: playwright-run
     steps:
+      # Get job logs using curl
+      - name: Get job logs
+        id: get_logs
+        run: |
+          LOGS=$(curl -s -L \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/${{ github.repository }}/actions/jobs/${{ needs.playwright-run.outputs.job-id }}/logs)
+
+          # Get last 20 lines and truncate if too long
+          LAST_LINES=$(echo "$LOGS" | tail -20)
+          if [ ${#LAST_LINES} -gt 1000 ]; then
+            TRUNCATED_LOGS="${LAST_LINES:0:1000}...[Logs truncated]"
+          else
+            TRUNCATED_LOGS="$LAST_LINES"
+          fi
+
+          # Escape newlines and quotes for JSON
+          ESCAPED_LOGS=$(echo "$TRUNCATED_LOGS" | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
+          echo "result=$ESCAPED_LOGS" >> $GITHUB_OUTPUT
+
       # Simple Slack notification
       - name: Post to Slack
         if: always()
@@ -70,7 +92,7 @@ jobs:
         with:
           payload: |
             {
-              "text": "${{ steps.test-runner.outcome == 'success' && '✅' || '❌' }} Playwright tests ${{ steps.test-runner.outcome }} for `${{ github.repository }}`\n\n📋 **Details:**\n• Branch: `${{ github.ref_name }}`\n• Commit: ${{ github.event.head_commit.message }}\n• Author: ${{ github.event.head_commit.author.name || github.actor }}\n\n GITHUB-REPOSITORY: ${{ github.repository }}\n\n GITHUB-TOKEN: ${{ secrets.GITHUB_TOKEN }}\n\n JOB-ID: ${{ needs.playwright-run.outputs.job-id }}\n\n STATUS: ${{ needs.cypress-run.outputs.status }}\n\n <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}| View the run on GitHub>"
+              "text": "${{ steps.test-runner.outcome == 'success' && '✅' || '❌' }} Playwright tests ${{ steps.test-runner.outcome }} for `${{ github.repository }}`\n\n📋 **Details:**\n• Branch: `${{ github.ref_name }}`\n• Commit: ${{ github.event.head_commit.message }}\n• Author: ${{ github.event.head_commit.author.name || github.actor }}\n\n GITHUB-REPOSITORY: ${{ github.repository }}\n\n GITHUB-TOKEN: ${{ secrets.GITHUB_TOKEN }}\n\n JOB-ID: ${{ needs.playwright-run.outputs.job-id }}\n\n STATUS: ${{ needs.playwright-run.outputs.status }}\n\n📋 **Test Logs:**\n```\n${{ steps.get_logs.outputs.result }}\n```\n\n <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}| View the run on GitHub>"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
