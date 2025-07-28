@@ -6,9 +6,12 @@ on:
     branches: [main, master]
 
 jobs:
-  test:
+  playwright-run:
     timeout-minutes: 60
     runs-on: ubuntu-latest
+    outputs:
+      job-id: ${{ steps.job_id.outputs.result }}
+      status: ${{ steps.test-runner.conclusion == 'success' && 'passed' || steps.test-runner.conclusion == 'failure' && 'failed' || 'encountered an exception' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -19,13 +22,29 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Resolve job ID from workflow run, accounting for matrix strategy.
+        id: job_id
+        uses: actions/github-script@main
+        env:
+          matrix: ${{ toJson(matrix) }}
+        with:
+          script: |
+            const { data: workflow_run } = await github.rest.actions.listJobsForWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.runId
+            });
+            const matrix = JSON.parse(process.env.matrix);
+            const job_name = `${context.job}${matrix ? ` (${Object.values(matrix).join(", ")})` : ""}`;
+            return workflow_run.jobs.find((job) => job.name.match(new RegExp(`^(?:[^/]*/\\s*)?${job_name}$`)))?.id;
+
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
 
       - name: Run Playwright tests
         run: npm run test
         continue-on-error: true
-        id: playwright-tests
+        id: test-runner
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -41,7 +60,7 @@ jobs:
         with:
           payload: |
             {
-              "text": "${{ steps.playwright-tests.outcome == 'success' && '✅' || '❌' }} Playwright tests ${{ steps.playwright-tests.outcome }} for `${{ github.repository }}`\n\n📋 **Details:**\n• Branch: `${{ github.ref_name }}`\n• Commit: ${{ github.event.head_commit.message }}\n• Author: ${{ github.event.head_commit.author.name || github.actor }}\n\n🔗 <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Details>"
+              "text": "${{ steps.test-runner.outcome == 'success' && '✅' || '❌' }} Playwright tests ${{ steps.test-runner.outcome }} for `${{ github.repository }}`\n\n📋 **Details:**\n• Branch: `${{ github.ref_name }}`\n• Commit: ${{ github.event.head_commit.message }}\n• Author: ${{ github.event.head_commit.author.name || github.actor }}\n\n🔗 <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Details>"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
