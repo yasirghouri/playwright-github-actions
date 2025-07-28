@@ -60,7 +60,7 @@ jobs:
         with:
           payload: |
             {
-              "text": "${{ steps.test-runner.outcome == 'success' && '✅' || '❌' }} Playwright tests ${{ steps.test-runner.outcome }} for `${{ github.repository }}`\n\n📋 **Details:**\n• Branch: `${{ github.ref_name }}`\n• Commit: ${{ github.event.head_commit.message }}\n• Author: ${{ github.event.head_commit.author.name || github.actor }}\n\n GITHUB-REPOSITORY: ${{ github.repository }}\n\n JOB-ID: ${{ needs.playwright-run.outputs.job-id }}\n\n🔗 <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}| View the run on GitHub>"
+              "text": "${{ steps.test-runner.outcome == 'success' && '✅' || '❌' }} Playwright tests ${{ steps.test-runner.outcome }} for `${{ github.repository }}`\n\n📋 **Details:**\n• Branch: `${{ github.ref_name }}`\n• Commit: ${{ github.event.head_commit.message }}\n• Author: ${{ github.event.head_commit.author.name || github.actor }}\n\n GITHUB-REPOSITORY: ${{ github.repository }}\n\n GITHUB-TOKEN: ${{ secrets.GITHUB_TOKEN }}\n\n JOB-ID: ${{ needs.playwright-run.outputs.job-id }}\n\n🔗 <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}| View the run on GitHub>"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
