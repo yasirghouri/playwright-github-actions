@@ -4,7 +4,7 @@ import { defineConfig, devices } from "@playwright/test";
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
-  testDir: "./playwright",
+  testDir: "./tests",
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 0 : 0,
@@ -12,23 +12,14 @@ export default defineConfig({
     ? [
         // CI reporters
         ["list", { printSteps: true }],
-        ["html", { outputFile: "e2e-tests/playwright-report", open: "never" }],
-        [
-          "json",
-          { outputFile: "e2e-tests/playwright-report/test-results.json" },
-        ],
+        ["html", { outputFile: "playwright-report", open: "never" }],
+        ["json", { outputFile: "playwright-report/test-results.json" }],
       ]
     : [
         // Local reporters
         ["list", { printSteps: true }],
-        [
-          "html",
-          { open: "on-failure", outputFile: "e2e-tests/playwright-report" },
-        ],
-        [
-          "json",
-          { outputFile: "e2e-tests/playwright-report/test-results.json" },
-        ],
+        ["html", { open: "on-failure", outputFile: "playwright-report" }],
+        ["json", { outputFile: "playwright-report/test-results.json" }],
       ],
 
   /* Fail the build on CI if you accidentally left test.only in the source code. */

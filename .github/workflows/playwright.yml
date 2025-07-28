@@ -73,17 +73,25 @@ jobs:
             -H "X-GitHub-Api-Version: 2022-11-28" \
             https://api.github.com/repos/${{ github.repository }}/actions/jobs/${{ needs.playwright-run.outputs.job-id }}/logs)
 
-          # Extract test results - look for failed/passed summary and failed test names
-          TEST_RESULTS=$(echo "$LOGS" | grep -E "(failed|passed|› tests/)" | grep -v "Post job cleanup" | tail -20)
+          # Extract the specific test run results (lines with ✘ or ✓)
+          TEST_RESULTS=$(echo "$LOGS" | grep -E "(✘|✓).*›.*tests/" | head -20)
 
-          # If no results found, get last few lines
-          if [ -z "$TEST_RESULTS" ]; then
-            TEST_RESULTS=$(echo "$LOGS" | tail -10)
-          fi
+          # Also get the "Running X tests" line for context
+          RUNNING_LINE=$(echo "$LOGS" | grep "Running.*tests using.*worker" | tail -1)
 
-          # Escape newlines and quotes for JSON
-          ESCAPED_RESULTS=$(echo "$TEST_RESULTS" | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
-          echo "result=$ESCAPED_RESULTS" >> $GITHUB_OUTPUT
+          # Combine them
+          if [ ! -z "$RUNNING_LINE" ]; then
+            FULL_RESULTS="$RUNNING_LINE"
+
+      # Simple Slack notification
+      - name: Post to Slack
+        if: always()
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": "${{ steps.test-runner.outcome == 'success' && '✅' || '❌' }} Playwright tests ${{ steps.test-runner.outcome }} for `${{ github.repository }}`\n\n📋 **Details:**\n• Branch: `${{ github.ref_name }}`\n• Commit: ${{ github.event.head_commit.message }}\n• Author: ${{ github.event.head_commit.author.name || github.actor }}\n\n GITHUB-REPOSITORY: ${{ github.repository }}\n\n GITHUB-TOKEN: ${{ secrets.GITHUB_TOKEN }}\n\n JOB-ID: ${{ needs.playwright-run.outputs.job-id }}\n\n STATUS: ${{ needs.playwright-run.outputs.status }}\n\n📋 **Test Logs:**\n```\n${{ steps.get_logs.outputs.result }}\n```\n\n <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}| View the run on GitHub>"
+            }
 
       # Simple Slack notification
       - name: Post to Slack
