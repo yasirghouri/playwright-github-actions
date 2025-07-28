@@ -9,6 +9,8 @@ jobs:
   playwright-run:
     timeout-minutes: 60
     runs-on: ubuntu-latest
+    env:
+      required_packages: apt-transport-https ca-certificates chromium curl gnupg-agent software-properties-common libgtk2.0-0 libgtk-3-0 libgbm-dev libnotify-dev libnss3 libxss1 libasound2 libxtst6 xauth xvfb postgresql-client
     outputs:
       job-id: ${{ steps.job_id.outputs.result }}
       status: ${{ steps.test-runner.conclusion == 'success' && 'passed' || steps.test-runner.conclusion == 'failure' && 'failed' || 'encountered an exception' }}
