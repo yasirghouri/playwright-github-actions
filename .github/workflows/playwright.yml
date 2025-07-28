@@ -67,24 +67,17 @@ jobs:
       - name: Get test results
         id: get_logs
         run: |
-          # Fetch logs
-          LOGS=$(curl -s -L \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            https://api.github.com/repos/${{ github.repository }}/actions/jobs/${{ needs.playwright-run.outputs.job-id }}/logs)
-
-          # Get only failed test results (✘ lines)
-          RESULTS=$(echo "$LOGS" | grep -E "✘.*›.*tests/")
-
-          # If no failures found, show success message
-          if [ -z "$RESULTS" ]; then
-            RESULTS="No errors found"
-          fi
-
-          # Escape for JSON
-          ESCAPED=$(echo "$RESULTS" | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
-          echo "result=$ESCAPED" >> $GITHUB_OUTPUT
+          delimiter=$(openssl rand -hex 8)
+          {
+            echo "result<<$delimiter"
+            curl -s -L \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              https://api.github.com/repos/${{ github.repository }}/actions/jobs/${{ needs.playwright-run.outputs.job-id }}/logs \
+              | (grep -E "✘.*›.*tests/" || echo "No errors found") | sed "s,\x1B\[[0-9;]*[a-zA-Z],,g"
+            echo "$delimiter"
+          } >> "$GITHUB_OUTPUT"
 
       # Simple Slack notification
       - name: Post to Slack
